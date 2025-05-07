@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>QR Code Generator</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet"/>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"/>
+  <style>
+    body, * {
+      cursor: none !important;
+    }
+
+    body {
+      margin: 0;
+      background: black;
+      font-family: 'Segoe UI', sans-serif;
+      overflow: hidden;
+      color: white;
+      padding: 60px 20px;
+      min-height: 100vh;
+      position: relative;
+    }
+
+    .cursor-bubble {
+      position: fixed;
+      width: 25px;
+      height: 25px;
+      background: rgba(255, 255, 255, 0.2);
+      border: 1px solid rgba(255, 255, 255, 0.4);
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 10000;
+      transform: translate(-50%, -50%);
+      transition: transform 0.1s ease-out;
+    }
+
+    .start-text {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 2.5rem;
+      font-weight: bold;
+      animation: floatText 3s ease-in-out infinite;
+      z-index: 10;
+      text-shadow: 0 0 10px rgba(255,255,255,0.5);
+    }
+
+    @keyframes floatText {
+      0%, 100% { transform: translate(-50%, 0); }
+      50% { transform: translate(-50%, -20px); }
+    }
+
+    .stars, .shooting-stars {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    .star {
+      position: absolute;
+      width: 2px;
+      height: 2px;
+      background: white;
+      border-radius: 50%;
+      opacity: 0.8;
+      animation: moveAcross linear infinite;
+    }
+
+    @keyframes moveAcross {
+      0% {
+        transform: translate(0, 0);
+        opacity: 0.8;
+      }
+      100% {
+        transform: translate(100vw, 100vh);
+        opacity: 0;
+      }
+    }
+
+    .shooting-star {
+      position: absolute;
+      width: 80px;
+      height: 2px;
+      background: linear-gradient(-45deg, white, transparent);
+      opacity: 0.6;
+      animation: shoot 3s linear infinite;
+    }
+
+    @keyframes shoot {
+      0% {
+        transform: translate(-100px, -100px) rotate(45deg);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(100vw, 100vh) rotate(45deg);
+        opacity: 0;
+      }
+    }
+
+    .container {
+      max-width: 900px;
+      background: rgba(15, 23, 42, 0.85);
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      position: relative;
+      z-index: 1;
+      backdrop-filter: blur(5px);
+    }
+
+    .form-group { margin-bottom: 25px; }
+
+    .form-control, .form-select {
+      padding: 12px;
+      border: 2px solid rgba(255,255,255,0.1);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.5);
+      color: white;
+    }
+
+    .form-control:focus, .form-select:focus {
+      border-color: #8b5cf6;
+      box-shadow: 0 0 0 0.2rem rgba(139, 92, 246, 0.25);
+    }
+
+    .btn-generate {
+      background: linear-gradient(45deg, #8b5cf6, #7c3aed);
+      color: white;
+      padding: 12px 30px;
+      border: none;
+      border-radius: 8px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+
+    .btn-generate:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 5px 15px rgba(139, 92, 246, 0.4);
+    }
+
+    .color-preview {
+      width: 25px;
+      height: 25px;
+      border-radius: 50%;
+      margin-left: 10px;
+      border: 2px solid rgba(255,255,255,0.2);
+    }
+
+    #qrCode {
+      margin-top: 30px;
+      padding: 20px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .loading {
+      display: none;
+      text-align: center;
+      padding: 20px;
+    }
+
+    .loading i {
+      color: #8b5cf6;
+      font-size: 2em;
+    }
+
+    .file-upload-label {
+      display: inline-block;
+      padding: 10px 20px;
+      background: rgba(255,255,255,0.05);
+      border: 2px dashed rgba(255,255,255,0.2);
+      border-radius: 8px;
+      text-align: center;
+      width: 100%;
+      cursor: pointer;
+    }
+
+    .file-upload input[type=file] { display: none; }
+
+    .file-name {
+      margin-top: 5px;
+      font-size: 0.9em;
+      color: rgba(255,255,255,0.7);
+    }
+  </style>
+</head>
+<body>
+  
+  <div class="stars" id="stars"></div>
+  <div class="shooting-stars" id="shootingStars"></div>
+  <div class="cursor-bubble" id="bubble"></div>
+
+  <div class="container">
+    <div class="start-text">QR Code Generater</div>
+    <form id="qrForm" enctype="multipart/form-data" novalidate>
+      <div class="form-group">
+        <label for="data">Text or URL</label>
+        <input type="text" class="form-control" id="data" name="data" required placeholder="Enter text or URL">
+        <div class="invalid-feedback">Please enter some text or URL</div>
+      </div>
+
+      <div class="row">
+        <div class="col-md-6">
+          <label>Foreground Color</label>
+          <div class="d-flex align-items-center">
+            <select class="form-select" id="fg_color" name="fg_color">
+              <option value="#000000">Black</option>
+              <option value="#3b82f6">Blue</option>
+              <option value="#ef4444">Red</option>
+              <option value="#10b981">Green</option>
+              <option value="#8b5cf6">Purple</option>
+            </select>
+            <span class="color-preview" id="fg-preview"></span>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <label>Background Color</label>
+          <div class="d-flex align-items-center">
+            <select class="form-select" id="bg_color" name="bg_color">
+              <option value="#ffffff">White</option>
+              <option value="#fef08a">Yellow</option>
+              <option value="#67e8f9">Cyan</option>
+              <option value="#d1d5db">Light Gray</option>
+              <option value="#000000">Black</option>
+            </select>
+            <span class="color-preview" id="bg-preview"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group mt-3">
+        <label>Logo (optional)</label>
+        <label class="file-upload-label">
+          <i class="fas fa-cloud-upload-alt me-2"></i> Upload logo
+          <input type="file" id="logo" name="logo" accept="image/*">
+        </label>
+        <div class="file-name" id="file-name">No file selected</div>
+      </div>
+
+      <div class="text-center mt-4">
+        <button type="submit" class="btn btn-generate">
+          <i class="fas fa-qrcode me-2"></i> Generate QR Code
+        </button>
+      </div>
+    </form>
+
+    <div class="loading" id="loading">
+      <i class="fas fa-spinner fa-spin"></i>
+      <p>Generating QR Code...</p>
+    </div>
+
+    <div id="qrCode" class="text-center"></div>
+  </div>
+
+  <script>
+    // Bubble cursor
+    const bubble = document.getElementById("bubble");
+    document.addEventListener("mousemove", (e) => {
+      bubble.style.top = `${e.clientY}px`;
+      bubble.style.left = `${e.clientX}px`;
+    });
+
+    // Color preview
+    const fg = document.getElementById('fg_color');
+    const bg = document.getElementById('bg_color');
+    const fgPrev = document.getElementById('fg-preview');
+    const bgPrev = document.getElementById('bg-preview');
+    function updateColorPreview() {
+      fgPrev.style.backgroundColor = fg.value;
+      bgPrev.style.backgroundColor = bg.value;
+    }
+    fg.addEventListener('change', updateColorPreview);
+    bg.addEventListener('change', updateColorPreview);
+    updateColorPreview();
+
+    // File name display
+    document.getElementById('logo').addEventListener('change', function(e) {
+      const fileName = e.target.files[0]?.name || 'No file selected';
+      document.getElementById('file-name').textContent = fileName;
+    });
+
+    // Starfield generation
+    const starContainer = document.getElementById('stars');
+    for (let i = 0; i < 120; i++) {
+      const star = document.createElement('div');
+      star.className = 'star';
+      star.style.left = `${Math.random() * 100}vw`;
+      star.style.top = `${Math.random() * 100}vh`;
+      star.style.animationDuration = `${3 + Math.random() * 7}s`;
+      starContainer.appendChild(star);
+    }
+
+    // Shooting stars
+    const shootingContainer = document.getElementById('shootingStars');
+    function createShootingStar() {
+      const star = document.createElement('div');
+      star.className = 'shooting-star';
+      star.style.top = `${Math.random() * 60}vh`;
+      star.style.left = `-${Math.random() * 200}px`;
+      shootingContainer.appendChild(star);
+      setTimeout(() => {
+        star.remove();
+      }, 3000);
+    }
+    setInterval(createShootingStar, 3000);
+  </script>
+</body>
+</html>
